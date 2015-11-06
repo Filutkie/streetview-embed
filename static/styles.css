@@ -1,0 +1,39 @@
+html, body {
+    background-color: #efefef;
+}
+
+.card-wide.mdl-card {
+    width: 840px;
+    padding: 32px 56px;
+    margin: 0 auto;
+}
+
+.main-content {
+    padding-top: 32px;
+}
+
+.container {
+    padding: 64px;
+}
+
+.textarea-custom {
+    font-size: 14px !important;
+    resize: none;
+    width: 400px;
+}
+
+.heading {
+    border-bottom: 1px solid #ebebeb;
+    margin: 24px 0 20px;
+    padding-bottom: 3px;
+    font: 400 22px/32px Roboto, sans-serif;
+}
+
+.output {
+    display: inline-block;
+    width: 100%;
+}
+
+.footer-list {
+    padding-left: 32px !important;
+}
