@@ -1,79 +1,27 @@
-## Python Flask Skeleton for Google App Engine
+# Street View™ Embed Tool
 
-A skeleton for building Python applications on Google App Engine with the
-[Flask micro framework](http://flask.pocoo.org).
+Tool for generating `<iframe>` code of your custom panorama on Google Maps™.
 
-See our other [Google Cloud Platform github
-repos](https://github.com/GoogleCloudPlatform) for sample applications and
-scaffolding for other python frameworks and use cases.
+Currently the Google Maps™ hasn't provided a way to get an embed HTML-code after the Google Maps Views™ service has been closed.
 
-## Run Locally
-1. Install the [App Engine Python SDK](https://developers.google.com/appengine/downloads).
-See the README file for directions. You'll need python 2.7 and [pip 1.4 or later](http://www.pip-installer.org/en/latest/installing.html) installed too.
+## How to use
 
-2. Clone this repo with
+- **Ctrl+C** the URL of panorama from address bar on Google Maps
+- **Ctrl+V** it into the Embed Tool input field
 
-   ```
-   git clone https://github.com/GoogleCloudPlatform/appengine-python-flask-skeleton.git
-   ```
-3. Install dependencies in the project's lib directory.
-   Note: App Engine can only import libraries from inside your project directory.
+## Outputs
+You'll get two `<iframe>` outputs:
+- The official way to embed Street View (documented but needs API Key)
+- Undocumented way, based on putting the values into legacy code (may be stop working in future, but does not require API Key)
 
-   ```
-   cd appengine-python-flask-skeleton
-   pip install -r requirements.txt -t lib
-   ```
-4. Run this project locally from the command line:
+The first way is always preferred but the second one doesn't require extra movements.
 
-   ```
-   dev_appserver.py .
-   ```
+## How it works
+The Tool reads provided URL and extracts all neccessary data, such as lat/long, heading. pitch and zoom, then tries to get pano ID from given coordinates and translates all obtained data to ready-to-use `<iframe>` code.
 
-Visit the application [http://localhost:8080](http://localhost:8080)
+For example, for the given URL:
+https://www.google.com/maps/@39.7212024,21.634081,3a,73.4y,264.97h,87.54t/data=!3m8... (truncated for readability)
+the main part is **@39.7212024,21.634081,3a,73.4y,264.97h,87.54t/**, and the rest is unneccessary.
 
-See [the development server documentation](https://developers.google.com/appengine/docs/python/tools/devserver)
-for options when running dev_appserver.
-
-## Deploy
-To deploy the application:
-
-1. Use the [Admin Console](https://appengine.google.com) to create a
-   project/app id. (App id and project id are identical)
-1. [Deploy the
-   application](https://developers.google.com/appengine/docs/python/tools/uploadinganapp) with
-
-   ```
-   appcfg.py -A <your-project-id> --oauth2 update .
-   ```
-1. Congratulations!  Your application is now live at your-app-id.appspot.com
-
-## Next Steps
-This skeleton includes `TODO` markers to help you find basic areas you will want
-to customize.
-
-### Relational Databases and Datastore
-To add persistence to your models, use
-[NDB](https://developers.google.com/appengine/docs/python/ndb/) for
-scale.  Consider
-[CloudSQL](https://developers.google.com/appengine/docs/python/cloud-sql)
-if you need a relational database.
-
-### Installing Libraries
-See the [Third party
-libraries](https://developers.google.com/appengine/docs/python/tools/libraries27)
-page for libraries that are already included in the SDK.  To include SDK
-libraries, add them in your app.yaml file. Other than libraries included in
-the SDK, only pure python libraries may be added to an App Engine project.
-
-### Feedback
-Star this repo if you found it useful. Use the github issue tracker to give
-feedback on this repo.
-
-## Contributing changes
-See [CONTRIB.md](CONTRIB.md)
-
-## Licensing
-See [LICENSE](LICENSE)
-
-## Author
-Logan Henriquez and Johan Euphrosine
+#### More information on Google Developers Guide:
+https://developers.google.com/maps/documentation/embed/guide#street_view_mode
