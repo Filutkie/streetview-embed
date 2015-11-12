@@ -40,7 +40,7 @@ function parseUrlForParams(url) {
 /**
  * Create iframe code for Street View window preview using our api key.
  * @param panoObject with panorama parameters
- * @returns XML
+ * @returns string
  */
 function createIframeForPreview(panoObject) {
     return '<iframe ' +
@@ -61,7 +61,7 @@ function createIframeForPreview(panoObject) {
 /**
  * Create iframe code for pasting it in output textarea block, replacing our api key with stub.
  * @param iframeCode which to process for replacing
- * @returns XML
+ * @returns {string} iframe without API Key
  */
 function createIframeForOutput(iframeCode) {
     return iframeCode.replace(API_KEY, 'YOUR_API_KEY');
@@ -70,7 +70,7 @@ function createIframeForOutput(iframeCode) {
 /**
  * Create iframe in legacy format. Not guaranteed to work in future.
  * @param panoObject
- * @returns XML
+ * @returns {string} iframe with values
  */
 function createLegacyIframe(panoObject) {
     return '<iframe ' +
@@ -89,18 +89,22 @@ function initMap() {
     getStreetViewData(getPanoParamsObject(url));
 }
 
+/**
+ * Extract panorama data such as ID from the given lat/long.
+ * @param panoObject
+ */
 function getStreetViewData(panoObject) {
     var location = {lat: panoObject.latitude, lng: panoObject.longitude};
-    streetViewService.getPanorama({location: location, radius: 2}, function (data, status) {
+    streetViewService.getPanorama({location: location, radius: 15}, function (data, status) {
         if (status === google.maps.StreetViewStatus.OK) {
             panoObject.id = data.location.pano;
             var panoIframeCode = createIframeForPreview(panoObject);
             $('#street-view-frame').html(panoIframeCode);
             $('#iframe-code-legacy').val(createLegacyIframe(panoObject));
             $('#iframe-code').val(createIframeForOutput(panoIframeCode));
-
         } else {
             console.error('Street View data not found for this location.');
+            $('#iframe-code').val('Street View not found');
         }
     });
 }
