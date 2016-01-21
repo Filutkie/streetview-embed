@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Street View Embed</title>
+    <link href="prism.css" rel="stylesheet"/>
+    <style>
+        html {
+            box-sizing: border-box;
+            height: 100%;
+        }
+
+        body {
+            margin: 0 auto;
+            min-height: 100%;
+            background-color: #fafafa;
+            font-family: "Helvetica", "Arial", sans-serif;
+            position: relative;
+            padding-bottom: 64px;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        ul {
+            list-style: none;
+            margin: 0;
+            padding: 8px 8px 8px 16px;
+        }
+
+        li {
+            display: inline;
+            padding: 4px;
+            font-size: 14px;
+        }
+
+        .container {
+            width: 960px;
+            margin: 0 auto;
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        .footer {
+            background-color: #e7e7e7;
+            color: #909090;
+            width: 100%;
+            padding: 12px 0;
+            margin: 0;
+            position: absolute;
+            bottom: 0;
+        }
+
+        #pano {
+            height: 500px;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+
+        #error {
+            display: none;
+            background-color: #f6cfd4;
+            text-align: center;
+            margin: 8px 0;
+            padding: 4px 0;
+            color: #5c5c5c;
+        }
+
+        #debug {
+            margin-top: 32px;
+            text-align: center;
+            background-color: #fafafa;
+        }
+    </style>
+    <script src="http://maps.google.com/maps/api/js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="prism.js"></script>
+    <script type="text/javascript">
+        google.maps.event.addDomListener(window, 'load', initialize);
+        var panoParamsObj = null, outputCode;
+        var testUrl = 'https://www.google.com/maps/@41.1383619,-124.1634531,3a,90y,214.46h,84.29t/data=!3m8!1e1!3m6!1s-2glwOAWk0fE%2FVcl3dF7hhSI%2FAAAAAAAACeo%2FaIYC-WdhiXI!2e4!3e11!6s%2F%2Flh3.googleusercontent.com%2F-2glwOAWk0fE%2FVcl3dF7hhSI%2FAAAAAAAACeo%2FaIYC-WdhiXI%2Fw203-h100-p-k-no%2F!7i8192!8i4096!6m1!1e1';
+
+        function initialize() {
+            google.maps.streetViewViewer = 'photosphere';
+            update(testUrl);
+
+            outputCode = $('#out');
+            $('#check').click(function () {
+                var inputValue = $('#url').val();
+                if (isUrlValid(inputValue)) {
+                    update(inputValue);
+                }
+            });
+        }
+
+        // TODO: replace with updateStreetViewPreview()
+        function update(url) {
+            var panorama = getStreetViewPanoramaObj(url);
+            console.log('test url: ', testUrl);
+            console.log('svpo:', getParams(url));
+
+            panorama.addListener('pano_changed', function () {
+                console.log(panorama.getPano());
+                panoParamsObj['pano'] = panorama.getPano();
+                panoParamsObj['lat'] = Number(panorama.getPosition().lat()).toFixed(6);
+                panoParamsObj['lng'] = Number(panorama.getPosition().lng()).toFixed(6);
+                updateCodePreview();
+            });
+
+            panorama.addListener('pov_changed', function () {
+                panoParamsObj['heading'] = Number(panorama.getPov().heading).toFixed(2);
+                panoParamsObj['pitch'] = Number(panorama.getPov().pitch).toFixed(2);
+                panoParamsObj['zoom'] = Number(panorama.getPov().zoom).toFixed(2);
+                updateCodePreview();
+            });
+        }
+
+        function getStreetViewPanoramaObj(url) {
+            panoParamsObj = getParams(url);
+            return new google.maps.StreetViewPanorama(
+                    document.getElementById('pano'), {
+                        pano: panoParamsObj['pano'],
+                        position: {lat: panoParamsObj['lat'], lng: panoParamsObj['lng']},
+                        pov: {
+                            heading: panoParamsObj['heading'],
+                            pitch: panoParamsObj['pitch'],
+                            zoom: panoParamsObj['zoom']
+                        }
+                    });
+        }
+
+        function getParams(url) {
+            var anchor = document.createElement('a');
+            anchor.href = url;
+            var path = anchor.pathname;
+            var segment = path.substring(path.indexOf('@') + 1, path.lastIndexOf('/'));
+            var paramsArray = segment.replace(/([A-z])/g, '').split(',').map(Number);
+            var pitch = paramsArray.length == 6 ? paramsArray[5] - 90 : 0.0;
+            var zoom = getZoomFromFov(paramsArray[3]);
+            console.log('params:', paramsArray);
+            console.log('my zoom:', zoom, ', fov', paramsArray[3]);
+
+            return {
+                pano: getPanoId(url),
+                lat: paramsArray[0],
+                lng: paramsArray[1],
+                zoom: zoom,
+                heading: paramsArray[4],
+                pitch: pitch
+            };
+        }
+
+        function getPanoId(url) {
+            var dataIndex = url.indexOf('/data=');
+            var from = url.indexOf('-', dataIndex);
+            var id = url.substring(from, url.indexOf('!', from));
+            var panoID = 'F:' + id.replace(new RegExp('%2F', 'g'), '/');
+            console.log('substring', id);
+            return panoID;
+        }
+
+        function getZoomFromFov(fov) {
+            return Number((Math.log(180 / fov) / Math.log(2) - 1).toFixed(2));
+        }
+
+        function isUrlValid(url) {
+            var errorDiv = $('#error');
+            if (url == '') {
+                errorDiv.text('Please enter an URL');
+                errorDiv.show();
+                return false;
+            } else {
+                var params = getParams(url);
+                if (params['pano'].length != 50) {
+                    errorDiv.text('The URL is not valid');
+                    errorDiv.show();
+                    return false;
+                }
+            }
+            errorDiv.hide();
+            return true;
+        }
+
+        function updateStreetViewPreview() {
+            return new google.maps.StreetViewPanorama(
+                    document.getElementById('pano'), {
+                        pano: panoParamsObj['pano'],
+                        position: {lat: panoParamsObj['lat'], lng: panoParamsObj['lng']},
+                        pov: {
+                            heading: panoParamsObj['heading'],
+                            pitch: panoParamsObj['pitch'],
+                            zoom: panoParamsObj['zoom']
+                        }
+                    });
+        }
+
+        function updateCodePreview() {
+            function formatHtml(s) {
+                return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            document.getElementById("out").innerHTML = formatHtml(getResultString(panoParamsObj));
+            Prism.highlightAll();
+        }
+
+        function getResultString() {
+            return '<html>\n' +
+                    '<head>\n' +
+                    '  <script src="http://maps.google.com/maps/api/js"><\/script>\n' +
+                    '  <script type="text/javascript">\n' +
+                    '    google.maps.event.addDomListener(window, \'load\', initialize);\n' +
+                    '    function initialize() {\n' +
+                    '      google.maps.streetViewViewer = \'photosphere\';\n' +
+                    '      var panorama = new google.maps.StreetViewPanorama(\n' +
+                    '        document.getElementById(\'pano\'), {\n' +
+                    '          pano: \'' + panoParamsObj['pano'] + '\',\n' +
+                    '          position: {lat: ' + panoParamsObj['lat'] + ', lng: ' + panoParamsObj['lng'] + '},\n' +
+                    '          pov: {heading: ' + panoParamsObj['heading'] + ', pitch: ' + panoParamsObj['pitch'] + ', zoom: ' + panoParamsObj['zoom'] + '}\n' +
+                    '      });\n' +
+                    '    }\n' +
+                    '  <\/script>\n' +
+                    '<\/head>\n' +
+                    '<body>\n' +
+                    '  <div id="pano" style="width: 100%; height: 100%;"></div>\n' +
+                    '<\/body>\n' +
+                    '<\/html>';
+        }
+    </script>
+</head>
+<body>
+<div class="container">
+    <div id="debug">
+        <p>Enter pano URL: </p>
+        <input type="text" id="url">
+        <button id="check">Check</button>
+    </div>
+    <div id="error"></div>
+    <pre class="line-numbers"><code class="language-markup" id="out"></code></pre>
+    <div id="pano"></div>
+</div>
+<div class="footer">
+    <ul class="footer-list">
+        <li><a href="https://www.google.com/+HermanStankov" target="_blank">+Herman Stankov</a></li>
+        <li>|</li>
+        <li><a href="https://github.com/Filutkie/streetview-embed" target="_blank">GitHub</a></li>
+    </ul>
+</div>
+</body>
+</html>
