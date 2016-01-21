@@ -106,6 +106,7 @@ $(document).ready(function () {
         function formatHtml(s) {
             return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
+
         document.getElementById("out").innerHTML = formatHtml(getResultString(panoParamsObj));
         Prism.highlightAll();
     }
