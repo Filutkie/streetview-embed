@@ -1,110 +1,135 @@
-var url = 'https://www.google.com/maps/@36.0946565,139.115957,3a,90y,26.06h,95.05t/',
-    API_KEY = 'AIzaSyAw8O3Is67Nzb5eXbbe2_-XVwvKNQ4efvM',
-    streetViewService;
+$(document).ready(function () {
+    google.maps.event.addDomListener(window, 'load', initialize);
 
-$('#streetview-url').on('input', function (event) {
-    var url = $(event.target).val();
-    $('#iframe-code').val('');
-    $('#iframe-code-legacy').val('');
-    getStreetViewData(getPanoParamsObject(url));
-});
+    var panoParamsObj = null,
+        testUrl = 'https://www.google.com/maps/@41.1385,-124.163335,3a,90y,292.61h,85.43t/data=!3m8!1e1!3m6!1s-KgDp6PbEdMc%2FVcfKospshpI%2FAAAAAAAACcc%2FpYJLwgd4tXk!2e4!3e11!6s%2F%2Flh5.googleusercontent.com%2F-KgDp6PbEdMc%2FVcfKospshpI%2FAAAAAAAACcc%2FpYJLwgd4tXk%2Fw203-h100-p-k-no%2F!7i8192!8i4096!6m1!1e1';
 
-/**
- * Create an object with assigned parameters.
- * The pitch parameter needs to be from -90 to 90 degrees
- * but comes with 1-179 so we need to make subtraction.
- */
-function getPanoParamsObject(url) {
-    var params = parseUrlForParams(url);
-    return {
-        latitude: params[0],
-        longitude: params[1],
-        fov: params[3],
-        heading: params[4],
-        pitch: params[5] - 90
-    };
-}
-
-/**
- * Parse given Street View url and extract pano parameters.
- * Returns array of parameters (lat, long, fov, heading, pitch).
- */
-function parseUrlForParams(url) {
-    var anchor = document.createElement('a');
-    anchor.href = url;
-    var path = anchor.pathname;
-    var segment = path.substring(path.indexOf('@') + 1, path.lastIndexOf('/'));
-    return segment.replace(/([A-z])/g, '').split(',').map(Number);
-}
-
-/**
- * Create iframe code for Street View window preview using our api key.
- * @param panoObject with panorama parameters
- * @returns string
- */
-function createIframeForPreview(panoObject) {
-    return '<iframe ' +
-        'width="600" ' +
-        'height="400" ' +
-        'frameborder="0" style="border:0" ' +
-        'src="https://www.google.com/maps/embed/v1/streetview?' +
-        'key=' + API_KEY +
-        '&location=' + panoObject.latitude + ',' + panoObject.longitude +
-        '&pano=' + panoObject.id +
-        '&heading=' + panoObject.heading +
-        '&pitch=' + panoObject.pitch +
-        '&fov=' + panoObject.fov +
-        '" allowfullscreen>' +
-        '</iframe>';
-}
-
-/**
- * Create iframe code for pasting it in output textarea block, replacing our api key with stub.
- * @param iframeCode which to process for replacing
- * @returns {string} iframe without API Key
- */
-function createIframeForOutput(iframeCode) {
-    return iframeCode.replace(API_KEY, 'YOUR_API_KEY');
-}
-
-/**
- * Create iframe in legacy format. Not guaranteed to work in future.
- * @param panoObject
- * @returns {string} iframe with values
- */
-function createLegacyIframe(panoObject) {
-    return '<iframe ' +
-        'width="600"' +
-        'height="400"' +
-        'frameborder="0"' +
-        'style="border: 0"' +
-        'src="https://maps.google.com/maps?layer=c&amp;panoid=' + panoObject.id +
-        '&amp;ie=UTF8&amp;source=embed&amp;output=svembed&amp;' +
-        'cbp=13%2C' + panoObject.heading + '%2C%2C0%2C' + -(panoObject.pitch) + '">' +
-        '</iframe>';
-}
-
-function initMap() {
-    streetViewService = new google.maps.StreetViewService();
-    getStreetViewData(getPanoParamsObject(url));
-}
-
-/**
- * Extract panorama data such as ID from the given lat/long.
- * @param panoObject
- */
-function getStreetViewData(panoObject) {
-    var location = {lat: panoObject.latitude, lng: panoObject.longitude};
-    streetViewService.getPanorama({location: location, radius: 15}, function (data, status) {
-        if (status === google.maps.StreetViewStatus.OK) {
-            panoObject.id = data.location.pano;
-            var panoIframeCode = createIframeForPreview(panoObject);
-            $('#street-view-frame').html(panoIframeCode);
-            $('#iframe-code-legacy').val(createLegacyIframe(panoObject));
-            $('#iframe-code').val(createIframeForOutput(panoIframeCode));
-        } else {
-            console.error('Street View data not found for this location.');
-            $('#iframe-code').val('Street View not found');
+    $('#check').click(function () {
+        var inputValue = $('#url').val();
+        if (isUrlValid(inputValue)) {
+            update(inputValue);
         }
     });
-}
+
+    $("#url").keyup(function (event) {
+        if (event.keyCode == 13) {
+            $("#check").click();
+        }
+    });
+
+    function initialize() {
+        google.maps.streetViewViewer = 'photosphere';
+        update(testUrl);
+    }
+
+    function update(url) {
+        var panorama = getStreetViewPanoramaObj(url);
+
+        panorama.addListener('pano_changed', function () {
+            panoParamsObj['pano'] = panorama.getPano();
+            panoParamsObj['lat'] = Number(panorama.getPosition().lat()).toFixed(6);
+            panoParamsObj['lng'] = Number(panorama.getPosition().lng()).toFixed(6);
+            updateCodePreview();
+        });
+
+        panorama.addListener('pov_changed', function () {
+            panoParamsObj['heading'] = Number(panorama.getPov().heading).toFixed(2);
+            panoParamsObj['pitch'] = Number(panorama.getPov().pitch).toFixed(2);
+            panoParamsObj['zoom'] = Number(panorama.getPov().zoom).toFixed(2);
+            updateCodePreview();
+        });
+    }
+
+    function getStreetViewPanoramaObj(url) {
+        panoParamsObj = getParams(url);
+        return new google.maps.StreetViewPanorama(
+            document.getElementById('pano'), {
+                pano: panoParamsObj['pano'],
+                position: {lat: panoParamsObj['lat'], lng: panoParamsObj['lng']},
+                pov: {
+                    heading: panoParamsObj['heading'],
+                    pitch: panoParamsObj['pitch'],
+                    zoom: panoParamsObj['zoom']
+                }
+            });
+    }
+
+    function getParams(url) {
+        var anchor = document.createElement('a');
+        anchor.href = url;
+        var path = anchor.pathname;
+        var segment = path.substring(path.indexOf('@') + 1, path.lastIndexOf('/'));
+        var paramsArray = segment.replace(/([A-z])/g, '').split(',').map(Number);
+        var pitch = paramsArray.length == 6 ? paramsArray[5] - 90 : 0.0;
+        var zoom = getZoomFromFov(paramsArray[3]);
+
+        return {
+            pano: getPanoId(url),
+            lat: paramsArray[0],
+            lng: paramsArray[1],
+            zoom: zoom,
+            heading: paramsArray[4],
+            pitch: pitch
+        };
+    }
+
+    function getPanoId(url) {
+        var dataIndex = url.indexOf('/data=');
+        var from = url.indexOf('-', dataIndex);
+        var id = url.substring(from, url.indexOf('!', from));
+        return 'F:' + id.replace(new RegExp('%2F', 'g'), '/');
+    }
+
+    function getZoomFromFov(fov) {
+        return Number((Math.log(180 / fov) / Math.log(2) - 1).toFixed(2));
+    }
+
+    function isUrlValid(url) {
+        var errorDiv = $('#error');
+        if (url == '') {
+            errorDiv.text('Please enter an URL');
+            errorDiv.show();
+            return false;
+        } else {
+            var params = getParams(url);
+            if (params['pano'].length != 50) {
+                errorDiv.text('The URL is not valid');
+                errorDiv.show();
+                return false;
+            }
+        }
+        errorDiv.hide();
+        return true;
+    }
+
+    function updateCodePreview() {
+        function formatHtml(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        document.getElementById("out").innerHTML = formatHtml(getResultString(panoParamsObj));
+        Prism.highlightAll();
+    }
+
+    function getResultString() {
+        return '<html>\n' +
+            '<head>\n' +
+            '  <script src="http://maps.google.com/maps/api/js"><\/script>\n' +
+            '  <script type="text/javascript">\n' +
+            '    google.maps.event.addDomListener(window, \'load\', initialize);\n' +
+            '    function initialize() {\n' +
+            '      google.maps.streetViewViewer = \'photosphere\';\n' +
+            '      var panorama = new google.maps.StreetViewPanorama(\n' +
+            '        document.getElementById(\'pano\'), {\n' +
+            '          pano: \'' + panoParamsObj['pano'] + '\',\n' +
+            '          position: {lat: ' + panoParamsObj['lat'] + ', lng: ' + panoParamsObj['lng'] + '},\n' +
+            '          pov: {heading: ' + panoParamsObj['heading'] + ', pitch: ' + panoParamsObj['pitch'] + ', zoom: ' + panoParamsObj['zoom'] + '}\n' +
+            '      });\n' +
+            '    }\n' +
+            '  <\/script>\n' +
+            '<\/head>\n' +
+            '<body>\n' +
+            '  <div id="pano" style="width: 100%; height: 100%;"></div>\n' +
+            '<\/body>\n' +
+            '<\/html>';
+    }
+});
