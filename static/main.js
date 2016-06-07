@@ -2,7 +2,7 @@ $(document).ready(function () {
     google.maps.event.addDomListener(window, 'load', initialize);
 
     var panoParamsObj = null,
-        testUrl = 'https://www.google.com/maps/@41.1385,-124.163335,3a,90y,292.61h,85.43t/data=!3m8!1e1!3m6!1s-KgDp6PbEdMc%2FVcfKospshpI%2FAAAAAAAACcc%2FpYJLwgd4tXk!2e4!3e11!6s%2F%2Flh5.googleusercontent.com%2F-KgDp6PbEdMc%2FVcfKospshpI%2FAAAAAAAACcc%2FpYJLwgd4tXk%2Fw203-h100-p-k-no%2F!7i8192!8i4096!6m1!1e1';
+        demoUrl = 'https://www.google.com/maps/@41.1385,-124.163335,3a,90y,292.61h,85.43t/data=!3m8!1e1!3m6!1s-KgDp6PbEdMc%2FVcfKospshpI%2FAAAAAAAACcc%2FpYJLwgd4tXk!2e4!3e11!6s%2F%2Flh5.googleusercontent.com%2F-KgDp6PbEdMc%2FVcfKospshpI%2FAAAAAAAACcc%2FpYJLwgd4tXk%2Fw203-h100-p-k-no%2F!7i8192!8i4096!6m1!1e1';
 
     $('#check').click(function () {
         var inputValue = $('#url').val();
@@ -19,7 +19,7 @@ $(document).ready(function () {
 
     function initialize() {
         google.maps.streetViewViewer = 'photosphere';
-        update(testUrl);
+        update(demoUrl);
     }
 
     function update(url) {
@@ -77,6 +77,9 @@ $(document).ready(function () {
         var dataIndex = url.indexOf('/data=');
         var from = url.indexOf('-', dataIndex);
         var id = url.substring(from, url.indexOf('!', from));
+        if (!id) {
+            return '';
+        }
         return 'F:' + id.replace(new RegExp('%2F', 'g'), '/');
     }
 
@@ -92,7 +95,7 @@ $(document).ready(function () {
             return false;
         } else {
             var params = getParams(url);
-            if (params['pano'].length != 50) {
+            if (!params['pano'].startsWith('F:-') || params['pano'].length < 48) {
                 errorDiv.text('The URL is not valid');
                 errorDiv.show();
                 return false;
